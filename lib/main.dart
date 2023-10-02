@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:qcrunningtest/component/scanqrcode.dart';
 import 'package:qcrunningtest/screen/login.dart';
 import 'package:qcrunningtest/screen/qchold.dart';
 
@@ -17,7 +18,11 @@ void main() {
       // locale: Locale('th', 'TH'),
       getPages: [
         //Simple GetPage
-        GetPage(name: '/login', page: () => LoginScreen()),
+        GetPage(
+            name: '/login',
+            transition: Transition.fade,
+            // transitionDuration: const Duration(milliseconds: 500),
+            page: () => const LoginScreen()),
         // GetPage with custom transitions and bindings
         // GetPage(
         //   name: '/second',
@@ -27,9 +32,16 @@ void main() {
         // ),
         // GetPage with default transitions
         GetPage(
+          name: '/scan',
+          transition: Transition.circularReveal,
+          // transitionDuration: const Duration(milliseconds: 500),
+          page: () => const QrcodeScanner(),
+        ),
+        GetPage(
           name: '/qc',
           transition: Transition.cupertino,
-          page: () => QCHoldScreen(),
+          // transitionDuration: const Duration(milliseconds: 500),
+          page: () => const QCHoldScreen(),
         ),
       ]));
 }
