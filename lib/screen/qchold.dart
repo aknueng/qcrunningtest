@@ -4,7 +4,6 @@ import 'dart:isolate';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
-import 'package:qcrunningtest/main.dart';
 import 'package:qcrunningtest/models/md_account.dart';
 import 'package:qcrunningtest/models/md_running.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +21,10 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
   String serialNo = "";
   String lineNo = "1";
   MAccount? oAccount;
+  FocusNode? focScanNode;
+  Color? colrScan = Colors.red[100];
+  TextEditingController scnCtrl = TextEditingController();
+
   Future<List<MRunningTestInfo>>? oRunnings;
   List<DropdownMenuItem<String>> oLines = [
     const DropdownMenuItem<String>(value: '1', child: Text('Line 1')),
@@ -41,7 +44,28 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
     getAccount().whenComplete(() {
       if (oAccount!.EmpCode == '' || oAccount!.EmpCode.isEmpty) {
         Get.offAndToNamed('/login');
+      } else {
+        focScanNode = FocusNode();
+        focScanNode!.requestFocus();
+        focScanNode!.addListener(_onFocusChange);
       }
+    });
+  }
+
+  @override
+  void dispose() {
+    scnCtrl.dispose();
+    focScanNode!.dispose();
+    focScanNode!.removeListener(_onFocusChange);
+
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    setState(() {
+      // debugPrint('${focScanNode!.hasFocus.toString()} | ${focScanNode!.hasFocus.toString()}');
+      colrScan =
+          (focScanNode!.hasFocus) ? Colors.yellow[300]! : Colors.red[100]!;
     });
   }
 
@@ -66,16 +90,48 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
           'serial': paramSerialNo,
           'line': paramLineNo
         }));
+
     if (response.statusCode == 200 || response.statusCode == 201) {
-      oRunnings = fetchDataRunningTest(paramSerialNo, paramLineNo);
+      final jsonData = jsonDecode(response.body);
+      if (jsonData['sts'].toString().toUpperCase() == 'TRUE') {
+        refreshData(paramSerialNo, paramLineNo);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Wrap(children: [
+                Text('ByPass $paramSerialNo, Line $paramLineNo เรียบร้อยแล้ว')
+              ]),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(30),
+            ),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Wrap(children: [
+                Text('ไม่สามารถ ByPass $paramSerialNo, Line $paramLineNo ได้')
+              ]),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(30),
+            ),
+          );
+        }
+      }
+
+      // debugPrint(
+      //     ' ${jsonData['sts'].toString()} | ${jsonData['msg'].toString()} ');
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Expanded(
-                child: Text(
-                    'ByPass $paramSerialNo, Line $paramLineNo เรียบร้อยแล้ว')),
-            backgroundColor: Colors.green,
+            content: Wrap(children: [
+              Text('ไม่สามารถ ByPass $paramSerialNo, Line $paramLineNo ได้')
+            ]),
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(30),
           ),
@@ -96,21 +152,61 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
           'line': paramLineNo
         }));
     if (response.statusCode == 200 || response.statusCode == 201) {
-      oRunnings = fetchDataRunningTest(paramSerialNo, paramLineNo);
+      final jsonData = jsonDecode(response.body);
+      if (jsonData['sts'].toString().toUpperCase() == 'TRUE') {
+        refreshData(paramSerialNo, paramLineNo);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Wrap(children: [
+                Text(
+                    'Hold Allow $paramSerialNo, Line $paramLineNo เรียบร้อยแล้ว')
+              ]),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(30),
+            ),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Wrap(children: [
+                Text('ไม่สามารถปลด Hold $paramSerialNo, Line $paramLineNo ได้')
+              ]),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(30),
+            ),
+          );
+        }
+      }
+
+      // debugPrint(
+      //     ' ${jsonData['sts'].toString()} | ${jsonData['msg'].toString()} ');
     } else {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Expanded(
-                child: Text(
-                    'Hold Allow $paramSerialNo, Line $paramLineNo เรียบร้อยแล้ว')),
-            backgroundColor: Colors.green,
+            content: Wrap(children: [
+              Text('ไม่สามารถปลด Hold $paramSerialNo, Line $paramLineNo ได้')
+            ]),
+            backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(30),
           ),
         );
       }
     }
+  }
+
+  void refreshData(String paramSerialNo, String paramLineNo) {
+    setState(() {
+      oRunnings = fetchDataRunningTest(paramSerialNo, paramLineNo);
+
+      focScanNode!.requestFocus();
+    });
   }
 
   Future<List<MRunningTestInfo>> fetchDataRunningTest(
@@ -127,25 +223,10 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
         }));
 
     if (response.statusCode == 200) {
-      // _selectOTJob = [];
-
-      // on success, parse the JSON in the response body
       final parser = GetRunningTestParser(response.body);
       Future<List<MRunningTestInfo>> data = parser.parseInBackground();
 
-      debugPrint(response.body);
-
-      // data.then((value) {
-      //   for (var i = 0; i < value.length; i++) {
-      //     _selectOTJob!.add('');
-      //   }
-      // });
-
       return data;
-
-      // return compute((message) => parseOTList(response.body), response.body);
-      // final parsed = jsonDecode(response.body)['todos'].cast<Map<String, dynamic>>();
-      // return parsed.map<Todos>((json) => Todos.fromJson(json)).toList();
     } else if (response.statusCode == 401) {
       if (context.mounted) {
         Navigator.pushNamed(context, '/login');
@@ -157,6 +238,7 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
     }
   }
 
+//============= LOG OUT ================
   void logOut() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
@@ -171,162 +253,230 @@ class _QCHoldScreenState extends State<QCHoldScreen> {
       Get.offAllNamed('/login');
     }
   }
+//============= LOG OUT ================
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: theme.colorScheme.inverseSurface,
-        foregroundColor: theme.colorScheme.inversePrimary,
-        title: const Text('RUNNING TEST'),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-              child: TextFormField(
-                maxLength: 15,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'SCAN COMPRESSOR',
-                  counterText: '',
-                  labelText: 'SCAN COMPRESSOR',
-                  fillColor: Colors.lime[50],
-                  filled: true,
-                  prefixIcon: const Padding(
-                    padding: EdgeInsets.all(10),
-                    child: Icon(FontAwesomeIcons.qrcode),
-                  ),
-                  suffixIcon: const Padding(
-                    padding: EdgeInsets.only(left: 0, right: 25),
-                    child: Icon(
-                      FontAwesomeIcons.qrcode,
-                      // size: 10,
+    return WillPopScope(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: theme.colorScheme.inverseSurface,
+          foregroundColor: theme.colorScheme.inversePrimary,
+          title: const Text('RUNNING TEST'),
+          centerTitle: true,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Text('LINE : '),
+                    DropdownButton(
+                      // isExpanded: true,
+                      items: oLines,
+                      focusColor: Colors.blue[900],
+                      dropdownColor: Colors.yellow[300],
+                      value: lineNo,
+                      onChanged: (val) {
+                        setState(() {
+                          lineNo = val!;
+                          focScanNode!.requestFocus();
+                        });
+                      },
                     ),
-                  ),
+                  ],
                 ),
-                onFieldSubmitted: (value) {
-                  setState(() {
-                    serialNo = value;
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  child: TextFormField(
+                    maxLength: 15,
+                    autofocus: true,
+                    controller: scnCtrl,
+                    focusNode: focScanNode,
+                    decoration: InputDecoration(
+                      hintText: 'SCAN COMPRESSOR',
+                      counterText: '',
+                      labelText: 'SCAN COMPRESSOR',
+                      fillColor: colrScan,
+                      filled: true,
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(FontAwesomeIcons.qrcode),
+                      ),
+                      suffixIcon: const Padding(
+                        padding: EdgeInsets.only(left: 0, right: 25),
+                        child: Icon(
+                          FontAwesomeIcons.qrcode,
+                          // size: 10,
+                        ),
+                      ),
+                    ),
+                    onFieldSubmitted: (value) async {
+                      setState(() {
+                        serialNo = value;
 
-                    fetchDataRunningTest(serialNo, lineNo);
-                  });
-                },
-              ),
-            ),
-            const Divider(
-              thickness: 10,
-            ),
-            Row(
-              children: [
-                const Text('Serial No :'),
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    ' $serialNo ',
-                    style: const TextStyle(
-                        backgroundColor: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold),
+                        oRunnings = fetchDataRunningTest(serialNo, lineNo);
+                        scnCtrl.text = '';
+                      });
+
+                      // debugPrint('============ START ============');
+                      refreshData(serialNo, lineNo);
+                      // debugPrint('============  END  ============');
+                    },
                   ),
                 ),
-              ],
-            ),
-            Row(
-              children: [
-                const Text('LINE : '),
-                DropdownButton(
-                  // isExpanded: true,
-                  items: oLines,
-                  value: lineNo,
-                  onChanged: (val) {
-                    setState(() {
-                      lineNo = val!;
-                    });
+                Row(
+                  children: [
+                    const Text('SerialNo:'),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        ' $serialNo ',
+                        style: TextStyle(
+                            backgroundColor: Colors.blue[200],
+                            color: Colors.indigo[900],
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(
+                  thickness: 5,
+                ),
+                FutureBuilder<List<MRunningTestInfo>>(
+                  future: oRunnings,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData &&
+                        snapshot.connectionState == ConnectionState.done) {
+                      if (snapshot.data!.isNotEmpty) {
+                        List<String> header =
+                            snapshot.data![0].header.split('|');
+
+                        List<DataColumn> oHeader = header
+                            .map((e) => DataColumn(label: Text(e)))
+                            .toList();
+
+                        List<DataRow> oRows = snapshot.data!.map((rw) {
+                          List<String> rows = rw.detail.split('|');
+                          var oRowCells = rows.map((str) {
+                            return DataCell(
+                              Text(
+                                str,
+                                style: TextStyle(
+                                    color: (str == 'OK')
+                                        ? Colors.green[900]
+                                        : (str.length > 10)
+                                            ? Colors.black
+                                            : Colors.red[900]),
+                              ),
+                            );
+                          }).toList();
+                          return DataRow(cells: oRowCells);
+                        }).toList();
+
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: DataTable(
+                              border: const TableBorder(
+                                top:
+                                    BorderSide(color: Colors.black, width: 0.5),
+                                bottom:
+                                    BorderSide(color: Colors.black, width: 0.5),
+                                left:
+                                    BorderSide(color: Colors.black, width: 0.5),
+                                right:
+                                    BorderSide(color: Colors.black, width: 0.5),
+                                horizontalInside:
+                                    BorderSide(color: Colors.black, width: 0.5),
+                                verticalInside:
+                                    BorderSide(color: Colors.black, width: 0.5),
+                              ),
+                              columnSpacing: 0,
+                              horizontalMargin: 0,
+                              headingRowColor:
+                                  const MaterialStatePropertyAll(Colors.green),
+                              headingRowHeight: 36,
+                              headingTextStyle:
+                                  const TextStyle(color: Colors.white),
+                              columns: oHeader,
+                              rows: oRows),
+                        );
+                      } else {
+                        return const Text(
+                          ' ไม่พบข้อมูล ',
+                          style: TextStyle(color: Colors.red),
+                        );
+                      }
+                    } else if (snapshot.hasError) {
+                      return Text('${snapshot.error}');
+                    } else if (snapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return const SizedBox(
+                          height: 50,
+                          width: 50,
+                          child: CircularProgressIndicator(
+                            color: Colors.red,
+                          ));
+                    } else {
+                      return const Text('');
+                      // return const SizedBox(
+                      //     height: 50,
+                      //     width: 50,
+                      //     child: CircularProgressIndicator(
+                      //       color: Colors.greenAccent,
+                      //     ));
+                    }
                   },
                 ),
               ],
             ),
-            Text(_selectedIndex.toString()),
-            Expanded(
-                child: FutureBuilder<List<MRunningTestInfo>>(
-              future: oRunnings,
-              builder: (context, snapshot) {
-                if (snapshot.hasData &&
-                    snapshot.connectionState == ConnectionState.done) {
-                  return (snapshot.data!.isNotEmpty)
-                      ? Text('count: ${snapshot.data!.length.toString()}')
-                      : Text('no data');
-                } else if (snapshot.hasError) {
-                  return Text('${snapshot.error}');
-                } else if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const SizedBox(
-                      height: 50,
-                      width: 50,
-                      child: CircularProgressIndicator(
-                        color: Colors.red,
-                      ));
-                } else {
-                  return const SizedBox(
-                      height: 50,
-                      width: 50,
-                      child: CircularProgressIndicator(
-                        color: Colors.greenAccent,
-                      ));
-                }
-              },
-            )),
+          ),
+        ),
+        bottomNavigationBar: BottomNavigationBar(
+          items: <BottomNavigationBarItem>[
+            const BottomNavigationBarItem(
+                icon: Icon(FontAwesomeIcons.lockOpen, color: Colors.yellow),
+                label: 'ALLOW HOLD'),
+            const BottomNavigationBarItem(
+              icon: Icon(FontAwesomeIcons.circleCheck, color: Colors.green),
+              label: 'BY-PASS',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.exit_to_app, color: Colors.redAccent[700]),
+              label: 'ออกระบบ',
+            ),
           ],
+          currentIndex: _selectedIndex,
+          // selectedItemColor: Colors.amber[800],
+          onTap: (int index) {
+            setState(
+              () {
+                _selectedIndex = index;
+              },
+            );
+            switch (index) {
+              case 0:
+                allowCompressor(serialNo, lineNo);
+                break;
+
+              case 1:
+                bypassCompressor(serialNo, lineNo);
+                break;
+              case 2:
+                logOut();
+                break;
+            }
+          },
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-              icon: Icon(FontAwesomeIcons.lockOpen, color: Colors.yellow),
-              label: 'ALLOW HOLD'),
-          BottomNavigationBarItem(
-            icon: Container(
-                child: Icon(FontAwesomeIcons.circleCheck, color: Colors.green)),
-            label: 'BY-PASS',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.exit_to_app, color: Colors.redAccent[700]),
-            label: 'ออกระบบ',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        // selectedItemColor: Colors.amber[800],
-        onTap: (int index) {
-          setState(
-            () {
-              _selectedIndex = index;
-            },
-          );
-          switch (index) {
-            case 0:
-              break;
-            // only scroll to top when current index is selected.
-            // if (_selectedIndex == index) {
-            //   _homeController.animateTo(
-            //     0.0,
-            //     duration: const Duration(milliseconds: 500),
-            //     curve: Curves.easeOut,
-            //   );
-            // }
-            case 1:
-              break;
-            //showModal(context);
-            case 2:
-              logOut();
-              break;
-          }
-        },
-      ),
+      onWillPop: () async {
+        Get.offAllNamed('/');
+        return false;
+      },
     );
   }
 }

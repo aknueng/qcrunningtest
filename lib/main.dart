@@ -3,65 +3,55 @@ import 'package:get/get.dart';
 import 'package:qcrunningtest/component/scanqrcode.dart';
 import 'package:qcrunningtest/screen/login.dart';
 import 'package:qcrunningtest/screen/qchold.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(GetMaterialApp(
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      theme: ThemeData.from(
-          colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.yellow, background: Colors.yellow[50])),
-      // It is not mandatory to use named routes, but dynamic urls are interesting.
-      initialRoute: '/login',
-      defaultTransition: Transition.native,
-      // translations: MyTranslations(),
-      // locale: Locale('th', 'TH'),
-      getPages: [
-        //Simple GetPage
-        GetPage(
-            name: '/login',
-            transition: Transition.fade,
-            // transitionDuration: const Duration(milliseconds: 500),
-            page: () => const LoginScreen()),
-        // GetPage with custom transitions and bindings
-        // GetPage(
-        //   name: '/second',
-        //   page: () => Second(),
-        //   customTransition: SizeTransitions(),
-        //   binding: SampleBind(),
-        // ),
-        // GetPage with default transitions
-        GetPage(
-          name: '/scan',
-          transition: Transition.circularReveal,
-          // transitionDuration: const Duration(milliseconds: 500),
-          page: () => const QrcodeScanner(),
-        ),
-        GetPage(
-          name: '/qc',
-          transition: Transition.cupertino,
-          // transitionDuration: const Duration(milliseconds: 500),
-          page: () => const QCHoldScreen(),
-        ),
-      ]));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await checkAccount();
+  runApp(const MyApp());
 }
 
+String initPage = '/qc';
+Future checkAccount() async {
+  final SharedPreferences prefs = await SharedPreferences.getInstance();
+  String chkLogin = prefs.getString('EmpCode') ?? '';
+  if (chkLogin == '' || chkLogin.isEmpty) {
+    initPage = '/login';
+  }
+}
 
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-
-//   // This widget is the root of your application.
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       title: 'Flutter Demo',
-//       theme: ThemeData(
-//         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-//         useMaterial3: true,
-//       ),
-//       home: const MyHomePage(title: 'Flutter Demo Home Page'),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return GetMaterialApp(
+        debugShowCheckedModeBanner: false,
+        themeMode: ThemeMode.dark,
+        theme: ThemeData.from(
+            colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.yellow, background: Colors.yellow[50])),
+        // It is not mandatory to use named routes, but dynamic urls are interesting.
+        initialRoute: initPage,
+        // defaultTransition: Transition.native,
+        // translations: MyTranslations(),
+        // locale: Locale('th', 'TH'),
+        getPages: [
+          //Simple GetPage
+          GetPage(
+              name: '/login',
+              transition: Transition.fade,
+              page: () => const LoginScreen()),
+          GetPage(
+            name: '/scan',
+            transition: Transition.circularReveal,
+            page: () => const QrcodeScanner(),
+          ),
+          GetPage(
+            name: '/qc',
+            transition: Transition.cupertino,
+            page: () => const QCHoldScreen(),
+          ),
+        ]);
+  }
+}
